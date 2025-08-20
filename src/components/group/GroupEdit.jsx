@@ -6,7 +6,7 @@ const API_BASE_URL = "https://albn-backend.vercel.app/api";
 const GroupEdit = ({ groupId, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: "",
-    murrabi: "",
+    murabbi: "",
     campus: "",
   });
 
