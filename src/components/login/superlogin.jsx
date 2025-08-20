@@ -68,7 +68,7 @@ const Superlogin = () => {
             </svg>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-1 text-center">
-            Super Admin Panel
+            Sub Admin Panel
           </h1>
           <p className="text-gray-500 text-base sm:text-lg text-center">
             Sign in to manage your administrators
