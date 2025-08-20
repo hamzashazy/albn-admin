@@ -68,33 +68,72 @@ const StudentCreate = () => {
   };
 
   return (
-    <div className="p-6 max-w-xl mx-auto bg-white shadow rounded">
-      <h2 className="text-xl font-semibold mb-4">Create New Student</h2>
-      {error && <p className="text-red-500">{error}</p>}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input type="text" name="name" placeholder="Name" onChange={handleChange} required className="w-full p-2 border rounded" />
-        <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="w-full p-2 border rounded" />
-        <input type="password" name="password" placeholder="Password" onChange={handleChange} required className="w-full p-2 border rounded" />
+    <div className="p-8 max-w-xl mx-auto bg-white rounded-3xl shadow-2xl border border-gray-200">
+      {error && <p className="text-red-600 text-center mb-4 font-medium">{error}</p>}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <input
+          type="text"
+          name="name"
+          placeholder="Full Name"
+          onChange={handleChange}
+          required
+          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          onChange={handleChange}
+          required
+          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          onChange={handleChange}
+          required
+          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
+        />
 
         {/* Program Dropdown */}
-        <select name="program" value={formData.program} onChange={handleChange} required className="w-full p-2 border rounded">
+        <select
+          name="program"
+          value={formData.program}
+          onChange={handleChange}
+          required
+          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
+        >
           <option value="">Select Program</option>
           {programs.map(program => (
-            <option key={program._id} value={program._id}>{program.title}</option>
+            <option key={program._id} value={program._id}>
+              {program.title}
+            </option>
           ))}
         </select>
 
         {/* Group Dropdown */}
-        <select name="group" value={formData.group} onChange={handleChange} required className="w-full p-2 border rounded">
+        <select
+          name="group"
+          value={formData.group}
+          onChange={handleChange}
+          required
+          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
+        >
           <option value="">Select Class/Group</option>
           {groups.map(group => (
-            <option key={group._id} value={group._id}>{group.name}</option>
+            <option key={group._id} value={group._id}>
+              {group.name}
+            </option>
           ))}
         </select>
 
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-          Create
+        <button
+          type="submit"
+          className="w-full py-4 text-xl font-semibold text-white rounded-xl bg-gradient-to-r from-blue-500 to-pink-600 hover:from-indigo-600 hover:to-blue-500 shadow-lg transition-transform transform hover:scale-105"
+        >
+          Create Student
         </button>
       </form>
     </div>

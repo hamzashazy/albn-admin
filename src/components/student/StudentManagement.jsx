@@ -42,21 +42,32 @@ const StudentManagement = () => {
 
 
     // Fetch students
-  const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${API_BASE_URL}/student/bycampus`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setStudents(res.data);
-      } catch (err) {
-        setError('Failed to fetch students');
-        console.error(err.response?.data || err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+const fetchStudents = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API_BASE_URL}/student/bycampus`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const fetchedStudents = res.data;
+    setStudents(fetchedStudents);
+
+    // Calculate stats
+    const total = fetchedStudents.length;
+    const active = fetchedStudents.filter(s => !s.isDeleted).length;
+    const disabled = fetchedStudents.filter(s => s.isDeleted).length;
+
+    setStats({ total, active, disabled });
+
+  } catch (err) {
+    setError('Failed to fetch students');
+    console.error(err.response?.data || err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Disable student
   const handleDeleteStudent = async (id) => {
