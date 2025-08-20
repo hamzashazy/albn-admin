@@ -3,10 +3,11 @@ import axios from "axios";
 
 const API_BASE_URL = "https://albn-backend.vercel.app/api";
 
-const GroupEdit = ({ groupId, onClose, onSuccess }) => {
+const ProgramEdit = ({ programId, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: "",
-    murrabi: "",
+    details: "",
+    startDate: "",
     campus: "",
   });
 
@@ -17,34 +18,35 @@ const GroupEdit = ({ groupId, onClose, onSuccess }) => {
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    if (!groupId){
+    if (!programId){
     setLoading(false);
     return;
   }
 
     const loadData = async () => {
       try {
-        const [groupRes, campusesRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/group/${groupId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        const [programRes, campusesRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/program/${programId}`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API_BASE_URL}/campus/active`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
 
         setFormData({
-          name: groupRes.data.name,
-          murabbi: groupRes.data.murabbi,
-          campus: groupRes.data.campus?._id || "",
+          title: programRes.data.title,
+          details: programRes.data.details,
+          startDate: programRes.data.startDate ? programRes.data.startDate.split("T")[0] : "",
+          campus: programRes.data.campus?._id || "",
         });
 
         setCampuses(campusesRes.data);
       } catch {
-        setError("Failed to load group or campuses data");
+        setError("Failed to load program or campuses data");
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [groupId, token]);
+  }, [programId, token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,15 +57,15 @@ const GroupEdit = ({ groupId, onClose, onSuccess }) => {
     e.preventDefault();
     try {
       const updateData = { ...formData };
-      if (!updateData.murabbi) delete updateData.murabbi;
+      if (!updateData.startDate) delete updateData.startDate;
 
-      await axios.put(`${API_BASE_URL}/group/${groupId}`, updateData, {
+      await axios.put(`${API_BASE_URL}/program/${programId}`, updateData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (onSuccess) onSuccess(); // close modal & refresh data in parent
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update group");
+      setError(err.response?.data?.message || "Failed to update program");
     }
   };
 
@@ -76,21 +78,29 @@ const GroupEdit = ({ groupId, onClose, onSuccess }) => {
       <form onSubmit={handleSubmit} className="space-y-5">
         <input 
           type="text" 
-          name="name" 
-          value={formData.name}
+          name="title" 
+          value={formData.title}
           onChange={handleChange} 
-          placeholder="Group Name" 
+          placeholder="Program Title" 
+          required 
+          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-600 shadow-sm transition"
+        />
+
+        <textarea
+          name="details" 
+          value={formData.details}
+          onChange={handleChange} 
+          placeholder="Program Details" 
           required 
           className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-600 shadow-sm transition"
         />
 
         <input 
-          type="text" 
-          name="murabbi" 
-          value={formData.murabbi}
+          type="date" 
+          name="startDate" 
+          value={formData.startDate}
           onChange={handleChange} 
-          placeholder="Murabbi" 
-          required 
+          placeholder="Start Date" 
           className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-600 shadow-sm transition"
         />
 
@@ -113,11 +123,11 @@ const GroupEdit = ({ groupId, onClose, onSuccess }) => {
           type="submit" 
           className="w-full py-4 text-xl font-semibold text-white rounded-xl bg-gradient-to-r from-blue-500 to-pink-600 hover:from-pink-500 hover:to-blue-500 shadow-lg transition-transform transform hover:scale-105"
         >
-          Update Group
+          Update Program
         </button>
       </form>
     </div>
   );
 };
 
-export default GroupEdit;
+export default ProgramEdit;

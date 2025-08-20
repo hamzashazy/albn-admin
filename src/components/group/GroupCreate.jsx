@@ -18,7 +18,7 @@ const GroupCreate = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_BASE_URL}/`, formData, {
+      await axios.post(`${API_BASE_URL}/createsfa`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       navigate('/group');

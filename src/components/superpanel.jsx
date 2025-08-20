@@ -7,10 +7,12 @@ import {
   Menu,
   X,
   Bell,
+  BookOpen,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import StudentManagement from "./student/StudentManagement.jsx";
 import GroupManagement from "./group/GroupManagement.jsx";
+import ProgramManagement from "./program/ProgramManagement.jsx";
 import NotificationManagement from "./notification/NotificationManagement.jsx";
 
 const Superpanel = () => {
@@ -30,6 +32,13 @@ const Superpanel = () => {
       title: "Classes",
       icon: <Users className="w-7 h-7" />,
       component: <GroupManagement />,
+      gradient: "from-cyan-500 to-blue-600",
+    },
+    {
+      key: "program",
+      title: "Programs",
+      icon: <BookOpen className="w-7 h-7" />,
+      component: <ProgramManagement />,
       gradient: "from-cyan-500 to-blue-600",
     },
     {
