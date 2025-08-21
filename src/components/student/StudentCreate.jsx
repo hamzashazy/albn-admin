@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = 'https://albn-backend.vercel.app/api';
 
-const StudentCreate = () => {
+const StudentCreate = ({onSuccess}) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -61,7 +61,9 @@ const StudentCreate = () => {
       await axios.post(`${API_BASE_URL}/student/registersfa`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      navigate('/student');
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create student');
     }

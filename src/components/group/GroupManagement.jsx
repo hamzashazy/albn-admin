@@ -394,10 +394,7 @@ const GroupManagement = () => {
               </button>
             </div>
             <GroupCreate
-              onClose={() => {
-                setIsCreateOpen(false);
-                fetchGroups();
-              }}
+              onSuccess={() => { setIsCreateOpen(false); fetchGroups(); }}
             />
           </div>
         </div>

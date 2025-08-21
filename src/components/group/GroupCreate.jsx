@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = 'https://albn-backend.vercel.app/api/group';
 
-const GroupCreate = () => {
+const GroupCreate = ({onSuccess}) => {
   const [formData, setFormData] = useState({ name: '', murabbi: '' });
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -21,7 +21,9 @@ const GroupCreate = () => {
       await axios.post(`${API_BASE_URL}/createsfa`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      navigate('/group');
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create group');
     }
