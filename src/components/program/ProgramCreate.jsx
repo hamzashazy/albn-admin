@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const API_BASE_URL = 'https://albn-backend.vercel.app/api';
 
-const ProgramCreate = () => {
+const ProgramCreate = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
     title: '',
     details: '',
@@ -30,7 +30,9 @@ const ProgramCreate = () => {
       await axios.post(`${API_BASE_URL}/program/createsfa`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      navigate('/program');
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create program');
     }
