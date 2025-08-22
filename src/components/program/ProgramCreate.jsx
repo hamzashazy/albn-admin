@@ -12,7 +12,6 @@ const ProgramCreate = ({ onSuccess }) => {
   });
 
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
 
 
