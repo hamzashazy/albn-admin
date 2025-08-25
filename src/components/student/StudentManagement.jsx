@@ -18,6 +18,8 @@ import {
   AlertCircle,
   X,
   Menu,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import axios from "axios";
 
@@ -32,6 +34,9 @@ const StudentManagement = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [programFilter, setProgramFilter] = useState("all");
+  const [groupFilter, setGroupFilter] = useState("all");
+  const [batchFilter, setBatchFilter] = useState("all");
   const [showDropdown, setShowDropdown] = useState(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -39,35 +44,50 @@ const StudentManagement = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
 
   const [stats, setStats] = useState({ total: 0, active: 0, disabled: 0 });
+  const [programs, setPrograms] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [batches, setBatches] = useState([]);
 
+  // Fetch students
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/student/bycampus`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    // Fetch students
-const fetchStudents = async () => {
-  try {
-    setLoading(true);
-    const token = localStorage.getItem('token');
-    const res = await axios.get(`${API_BASE_URL}/student/bycampus`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+      const data = res.data;
+      setStudents(data);
 
-    const fetchedStudents = res.data;
-    setStudents(fetchedStudents);
+      const total = data.length;
+      const active = data.filter((s) => !s.isDeleted).length;
+      const disabled = data.filter((s) => s.isDeleted).length;
+      setStats({ total, active, disabled });
+    } catch {
+      setError("Failed to fetch students.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Calculate stats
-    const total = fetchedStudents.length;
-    const active = fetchedStudents.filter(s => !s.isDeleted).length;
-    const disabled = fetchedStudents.filter(s => s.isDeleted).length;
-
-    setStats({ total, active, disabled });
-
-  } catch (err) {
-    setError('Failed to fetch students');
-    console.error(err.response?.data || err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
+  // Fetch filter data
+  const fetchFilterData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const [programRes, groupRes, batchRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/program/active`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/group/active`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_BASE_URL}/batch/active`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      setPrograms(Array.isArray(programRes.data) ? programRes.data : []);
+      setGroups(Array.isArray(groupRes.data) ? groupRes.data : []);
+      setBatches(Array.isArray(batchRes.data) ? batchRes.data : []);
+    } catch (e) {
+      // ignore silently
+    }
+  };
 
   // Disable student
   const handleDeleteStudent = async (id) => {
@@ -119,19 +139,90 @@ const fetchStudents = async () => {
       student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.campus?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.program?.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      student.program?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.batch?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.group?.name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilter =
       filterStatus === "all" ||
       (filterStatus === "active" && !student.isDeleted) ||
       (filterStatus === "disabled" && student.isDeleted);
 
-    return matchesSearch && matchesFilter;
+    const matchesProgram =
+      programFilter === "all" || (typeof student.program === 'string' ? student.program === programFilter : student.program?._id === programFilter);
+    const matchesGroup =
+      groupFilter === "all" || (typeof student.group === 'string' ? student.group === groupFilter : student.group?._id === groupFilter);
+    const matchesBatch =
+      batchFilter === "all" || (typeof student.batch === 'string' ? student.batch === batchFilter : student.batch?._id === batchFilter);
+
+    return matchesSearch && matchesFilter && matchesProgram && matchesGroup && matchesBatch;
   });
 
   useEffect(() => {
     fetchStudents();
+    fetchFilterData();
   }, []);
+
+  // Export helpers (CSV/PDF) based on current filteredStudents
+  const exportStudentsToCSV = () => {
+    try {
+      const headers = ["Name","Email","Campus","Program","Batch","Group","Status"];
+      const rows = filteredStudents.map(s => [
+        s.name || "",
+        s.email || "",
+        s.campus?.name || "",
+        s.program?.title || s.program?.name || "",
+        s.batch?.name || "",
+        s.group?.name || "",
+        s.isDeleted ? "Disabled" : "Active",
+      ]);
+      const escapeCell = (v) => {
+        const s = String(v ?? "");
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      };
+      const csv = [headers, ...rows].map(r => r.map(escapeCell).join(',')).join('\n');
+      const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'students.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('CSV export failed', e);
+      setError('Failed to export CSV');
+    }
+  };
+
+  const exportStudentsToPDF = () => {
+    try {
+      const win = window.open('', '_blank');
+      if (!win) return;
+      const styles = `
+        <style>
+          body{font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding:16px;}
+          h1{font-size:18px;margin:0 0 12px 0}
+          table{width:100%;border-collapse:collapse}
+          th,td{border:1px solid #ddd;padding:8px;font-size:12px;text-align:left}
+          th{background:#f3f4f6}
+        </style>`;
+      const head = `<tr><th>Name</th><th>Email</th><th>Campus</th><th>Program</th><th>Batch</th><th>Group</th><th>Status</th></tr>`;
+      const rows = filteredStudents.map(s => `
+        <tr>
+          <td>${s.name||''}</td>
+          <td>${s.email||''}</td>
+          <td>${s.campus?.name||''}</td>
+          <td>${s.program?.title||s.program?.name||''}</td>
+          <td>${s.batch?.name||''}</td>
+          <td>${s.group?.name||''}</td>
+          <td>${s.isDeleted?'Disabled':'Active'}</td>
+        </tr>`).join('');
+      win.document.write(`<!doctype html><html><head>${styles}</head><body><h1>Students Export</h1><table>${head}${rows}</table></body></html>`);
+      win.document.close(); win.focus(); win.print();
+    } catch (e) {
+      console.error('PDF export failed', e);
+      setError('Failed to export PDF');
+    }
+  };
 
   // Stats Card
   const StatsCard = ({ icon: Icon, label, value, color }) => (
@@ -146,112 +237,109 @@ const fetchStudents = async () => {
     </div>
   );
 
-  // Student Card
-  const StudentCard = ({ student }) => (
-    <div
-      className={`bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-lg border border-gray-200 relative transition transform hover:shadow-2xl hover:-translate-y-1 ${
-        student.isDeleted ? "opacity-70" : ""
-      }`}
-    >
-      <div className="flex justify-between items-start mb-4 sm:mb-5">
-        <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-          <div
-            className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl lg:text-2xl shadow-md flex-shrink-0 ${
-              student.isDeleted
-                ? "bg-gradient-to-br from-red-400 to-red-600"
-                : "bg-gradient-to-br from-indigo-500 to-indigo-700"
-            }`}
-          >
-            {student.name?.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
-              {student.name}
-            </h3>
-            <span
-              className={`inline-block px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-full mt-1 ${
+    // Student Card
+    const StudentCard = ({ student }) => (
+      <div
+        className={`bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-lg border border-gray-200 relative transition transform hover:shadow-2xl hover:-translate-y-1 ${
+          student.isDeleted ? "opacity-70" : ""
+        }`}
+      >
+        <div className="flex justify-between items-start mb-4 sm:mb-5">
+          <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+            <div
+              className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl lg:text-2xl shadow-md flex-shrink-0 ${
                 student.isDeleted
-                  ? "bg-red-100 text-red-700"
-                  : "bg-green-100 text-green-700"
+                  ? "bg-gradient-to-br from-red-400 to-red-600"
+                  : "bg-gradient-to-br from-indigo-500 to-indigo-700"
               }`}
             >
-              {student.isDeleted ? "Disabled" : "Active"}
-            </span>
+              {student.name?.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+                {student.name}
+              </h3>
+              <span
+                className={`inline-block px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-full mt-1 ${
+                  student.isDeleted
+                    ? "bg-red-100 text-red-700"
+                    : "bg-green-100 text-green-700"
+                }`}
+              >
+                {student.isDeleted ? "Disabled" : "Active"}
+              </span>
+            </div>
           </div>
+          <button
+            type="button"
+            className="flex-shrink-0 p-1"
+            onClick={(e) => { e.stopPropagation(); 
+            setShowDropdown(showDropdown === student._id ? null : student._id); }}
+          >
+            <MoreVertical className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" />
+          </button>
+          {showDropdown === student._id && (
+            <div className="absolute right-4 sm:right-6 top-12 sm:top-14 bg-white rounded-lg shadow-xl border py-2 sm:py-3 z-20 w-40 sm:w-48 text-sm sm:text-lg">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setSelectedStudent(student); setIsEditOpen(true); setShowDropdown(null); }}
+                className="w-full px-3 sm:px-5 py-2 sm:py-3 text-left hover:bg-gray-100 flex items-center gap-2 sm:gap-3"
+              >
+                <Edit className="w-4 h-4 sm:w-5 sm:h-5" /> Edit
+              </button>
+              {student.isDeleted ? (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleRestoreStudent(student._id); setShowDropdown(null); }}
+                  className="w-full px-3 sm:px-5 py-2 sm:py-3 text-left hover:bg-gray-100 text-blue-600 flex items-center gap-2 sm:gap-3"
+                >
+                  <RefreshCcw className="w-4 h-4 sm:w-5 sm:h-5" /> Restore
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); if (window.confirm("Disable this student?")) { handleDeleteStudent(student._id); setShowDropdown(null); } }}
+                  className="w-full px-3 sm:px-5 py-2 sm:py-3 text-left hover:bg-gray-100 text-red-600 flex items-center gap-2 sm:gap-3"
+                >
+                  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /> Disable
+                </button>
+              )}
+            </div>
+          )}
         </div>
-        <button
-          className="flex-shrink-0 p-1"
-          onClick={() =>
-            setShowDropdown(showDropdown === student._id ? null : student._id)
-          }
-        >
-          <MoreVertical className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500" />
-        </button>
-        {showDropdown === student._id && (
-          <div className="absolute right-4 sm:right-6 top-12 sm:top-14 bg-white rounded-lg shadow-xl border py-2 sm:py-3 z-20 w-40 sm:w-48 text-sm sm:text-lg">
-            <button
-              onClick={() => {
-                setSelectedStudent(student);
-                setIsEditOpen(true);
-                setShowDropdown(null);
-              }}
-              className="w-full px-3 sm:px-5 py-2 sm:py-3 text-left hover:bg-gray-100 flex items-center gap-2 sm:gap-3"
-            >
-              <Edit className="w-4 h-4 sm:w-5 sm:h-5" /> Edit
-            </button>
-            {student.isDeleted ? (
-              <button
-                onClick={() => {
-                  handleRestoreStudent(student._id);
-                  setShowDropdown(null);
-                }}
-                className="w-full px-3 sm:px-5 py-2 sm:py-3 text-left hover:bg-gray-100 text-blue-600 flex items-center gap-2 sm:gap-3"
-              >
-                <RefreshCcw className="w-4 h-4 sm:w-5 sm:h-5" /> Restore
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  if (window.confirm("Disable this student?")) {
-                    handleDeleteStudent(student._id);
-                    setShowDropdown(null);
-                  }
-                }}
-                className="w-full px-3 sm:px-5 py-2 sm:py-3 text-left hover:bg-gray-100 text-red-600 flex items-center gap-2 sm:gap-3"
-              >
-                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /> Disable
-              </button>
-            )}
-          </div>
-        )}
-      </div>
 
-      <div className="space-y-2 sm:space-y-3 text-sm sm:text-base lg:text-lg text-gray-700">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <Mail className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
-          <span className="truncate">{student.email}</span>
+        <div className="space-y-2 sm:space-y-3 text-sm sm:text-base lg:text-lg text-gray-700">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Mail className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
+            <span className="truncate">{student.email}</span>
+          </div>
+          {student.campus?.name && (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Building className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
+              <span className="truncate">{student.campus.name}</span>
+            </div>
+          )}
+          {student.program?.title && (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
+              <span className="truncate">{student.program.title}</span>
+            </div>
+          )}
+          {student.batch?.name && (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
+              <span className="truncate">{student.batch.name}</span>
+            </div>
+          )}
+          {student.group?.name && (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
+              <span className="truncate">{student.group.name}</span>
+            </div>
+          )}
         </div>
-        {student.campus?.name && (
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Building className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
-            <span className="truncate">{student.campus.name}</span>
-          </div>
-        )}
-        {student.program?.title && (
-          <div className="flex items-center gap-2 sm:gap-3">
-            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
-            <span className="truncate">{student.program.title}</span>
-          </div>
-        )}
-        {student.group?.name && (
-          <div className="flex items-center gap-2 sm:gap-3">
-            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" /> 
-            <span className="truncate">{student.group.name}</span>
-          </div>
-        )}
       </div>
-    </div>
-  );
+    );
 
   // Skeleton Loader
   const SkeletonCard = () => (
@@ -318,33 +406,82 @@ const fetchStudents = async () => {
 
         {/* Search + Filter */}
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 lg:mb-10">
-          <div className="flex flex-col lg:flex-row gap-4 sm:gap-5">
-            <div className="flex-1 relative">
+          <div className="space-y-4">
+            {/* Row 1: Search Bar */}
+            <div className="relative">
               <Search className="absolute left-3 sm:left-4 top-3 sm:top-4 text-gray-400 w-5 h-5 sm:w-6 sm:h-6" />
               <input
                 type="text"
-                placeholder="Search by name, email, campus, or program..."
+                placeholder="Search by name, email, batch or program..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 sm:pl-12 pr-4 sm:pr-5 py-3 sm:py-4 rounded-lg border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-base sm:text-lg lg:text-xl shadow-sm"
               />
             </div>
-            <div className="flex gap-3 sm:gap-4">
+
+            {/* Row 2: Filters and Actions */}
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="flex-1 sm:flex-none px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-base sm:text-lg lg:text-xl min-w-0"
+                className="flex-1 sm:flex-none px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-base sm:text-lg lg:text-xl min-w-[12rem]"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active Only</option>
                 <option value="disabled">Disabled Only</option>
               </select>
-              <button
-                onClick={fetchStudents}
-                className="px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 hover:bg-gray-100 shadow-sm flex-shrink-0"
+              <select
+                value={programFilter}
+                onChange={(e) => setProgramFilter(e.target.value)}
+                className="flex-1 sm:flex-none px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-base sm:text-lg lg:text-xl min-w-[12rem]"
               >
-                <RefreshCcw className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
-              </button>
+                <option value="all">All Programs</option>
+                {programs.map(p => (
+                  <option key={p._id} value={p._id}>{p.title || p.name}</option>
+                ))}
+              </select>
+              <select
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+                className="flex-1 sm:flex-none px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-base sm:text-lg lg:text-xl min-w-[12rem]"
+              >
+                <option value="all">All Groups</option>
+                {groups.map(g => (
+                  <option key={g._id} value={g._id}>{g.name}</option>
+                ))}
+              </select>
+              <select
+                value={batchFilter}
+                onChange={(e) => setBatchFilter(e.target.value)}
+                className="flex-1 sm:flex-none px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-base sm:text-lg lg:text-xl min-w-[12rem]"
+              >
+                <option value="all">All Batches</option>
+                {batches.map(b => (
+                  <option key={b._id} value={b._id}>{b.name}</option>
+                ))}
+              </select>
+              <div className="ml-auto flex gap-2">
+                <button
+                  onClick={fetchStudents}
+                  className="px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 hover:bg-gray-100 shadow-sm"
+                >
+                  <RefreshCcw className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
+                </button>
+                <button
+                  onClick={exportStudentsToCSV}
+                  className="px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 hover:bg-gray-100 shadow-sm"
+                  title="Export to Excel (CSV)"
+                >
+                  <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
+                </button>
+                <button
+                  onClick={exportStudentsToPDF}
+                  className="px-3 sm:px-4 lg:px-5 py-3 sm:py-4 rounded-lg border border-gray-300 hover:bg-gray-100 shadow-sm"
+                  title="Export to PDF"
+                >
+                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

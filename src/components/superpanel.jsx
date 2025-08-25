@@ -14,6 +14,7 @@ import StudentManagement from "./student/StudentManagement.jsx";
 import GroupManagement from "./group/GroupManagement.jsx";
 import ProgramManagement from "./program/ProgramManagement.jsx";
 import NotificationManagement from "./notification/NotificationManagement.jsx";
+import BatchManagement from "./batch/BatchManagement.jsx";
 
 const Superpanel = () => {
   const [activeModule, setActiveModule] = useState("dashboard");
@@ -39,6 +40,13 @@ const Superpanel = () => {
       title: "Programs",
       icon: <BookOpen className="w-7 h-7" />,
       component: <ProgramManagement />,
+      gradient: "from-cyan-500 to-blue-600",
+    },
+    {
+      key: "batch",
+      title: "Batches",
+      icon: <BookOpen className="w-7 h-7" />,
+      component: <BatchManagement />,
       gradient: "from-cyan-500 to-blue-600",
     },
     {

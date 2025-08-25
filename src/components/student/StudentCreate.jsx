@@ -3,48 +3,32 @@ import axios from 'axios';
 
 const API_BASE_URL = 'https://albn-backend.vercel.app/api';
 
-const StudentCreate = ({onSuccess}) => {
+const StudentCreate = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    program: '',
-    group: '',
+    name: '', email: '', password: '', program: '', group: '', batch: ''
   });
 
   const [programs, setPrograms] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [groups, setGroups] = useState([]);
   const [error, setError] = useState(null);
 
-  // Fetch programs
-  const fetchPrograms = async () => {
+  const fetchData = async (endpoint, setter) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API_BASE_URL}/program/active`, {
+      const res = await axios.get(`${API_BASE_URL}/${endpoint}/active`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setPrograms(res.data);
+      setter(res.data);
     } catch {
-      setError('Failed to load programs');
-    }
-  };
-
-  // Fetch groups
-  const fetchGroups = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${API_BASE_URL}/group/active`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setGroups(res.data);
-    } catch {
-      setError('Failed to load groups');
+      setError(`Failed to load ${endpoint}`);
     }
   };
 
   useEffect(() => {
-    fetchPrograms();
-    fetchGroups();
+    fetchData('program', setPrograms);
+    fetchData('batch', setBatches);
+    fetchData('group', setGroups);
   }, []);
 
   const handleChange = e => {
@@ -59,6 +43,7 @@ const StudentCreate = ({onSuccess}) => {
       await axios.post(`${API_BASE_URL}/student/registersfa`, formData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (onSuccess) {
         onSuccess();
       }
@@ -70,69 +55,32 @@ const StudentCreate = ({onSuccess}) => {
   return (
     <div className="p-8 max-w-xl mx-auto bg-white rounded-3xl shadow-2xl border border-gray-200">
       {error && <p className="text-red-600 text-center mb-4 font-medium">{error}</p>}
-
       <form onSubmit={handleSubmit} className="space-y-5">
-        <input
-          type="text"
-          name="name"
-          placeholder="Full Name"
-          onChange={handleChange}
-          required
-          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          onChange={handleChange}
-          required
-          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          onChange={handleChange}
-          required
-          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
-        />
+        <input type="text" name="name" placeholder="Name" onChange={handleChange} required className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition" />
+        <input type="email" name="email" placeholder="Email" onChange={handleChange} required className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition" />
+        <input type="password" name="password" placeholder="Password" onChange={handleChange} required className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition" />
+        
+
 
         {/* Program Dropdown */}
-        <select
-          name="program"
-          value={formData.program}
-          onChange={handleChange}
-          required
-          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
-        >
+        <select name="program" value={formData.program} onChange={handleChange} required className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition">
           <option value="">Select Program</option>
-          {programs.map(program => (
-            <option key={program._id} value={program._id}>
-              {program.title}
-            </option>
-          ))}
+          {programs.map(p => <option key={p._id} value={p._id}>{p.title}</option>)}
+        </select>
+
+        {/* Batch Dropdown */}
+        <select name="batch" value={formData.batch} onChange={handleChange} required className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition">
+          <option value="">Select Batch</option>
+          {batches.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
         </select>
 
         {/* Group Dropdown */}
-        <select
-          name="group"
-          value={formData.group}
-          onChange={handleChange}
-          required
-          className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition"
-        >
-          <option value="">Select Class/Group</option>
-          {groups.map(group => (
-            <option key={group._id} value={group._id}>
-              {group.name}
-            </option>
-          ))}
+        <select name="group" value={formData.group} onChange={handleChange} required className="w-full p-4 text-lg rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm transition">
+          <option value="">Select Group</option>
+          {groups.map(g => <option key={g._id} value={g._id}>{g.name}</option>)}
         </select>
 
-        <button
-          type="submit"
-          className="w-full py-4 text-xl font-semibold text-white rounded-xl bg-gradient-to-r from-blue-500 to-pink-600 hover:from-indigo-600 hover:to-blue-500 shadow-lg transition-transform transform hover:scale-105"
-        >
+        <button type="submit" className="w-full py-4 text-xl font-semibold text-white rounded-xl bg-gradient-to-r from-blue-500 to-pink-600 hover:from-indigo-600 hover:to-blue-500 shadow-lg transition-transform transform hover:scale-105">
           Create Student
         </button>
       </form>
